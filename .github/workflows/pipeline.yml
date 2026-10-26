@@ -27,7 +27,7 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r pipeline_cloud/requirements.txt
 
 
       - name: Executar testes
@@ -39,6 +39,15 @@ jobs:
         working-directory: pipeline_cloud
         run: |
           python -m src.pipeline
+
+
+      - name: Persistir dados no PostgreSQL
+        working-directory: pipeline_cloud
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python -m src.persistir_postgres
+
 
 
       - name: Salvar resultados
