@@ -29,19 +29,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+
       - name: Executar testes
+        working-directory: pipeline_cloud
         run: |
           python -m pytest tests/ -v
 
       - name: Executar pipeline
+        working-directory: pipeline_cloud
         run: |
           python -m src.pipeline
+
 
       - name: Salvar resultados
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: resultados-${{ github.run_id }}
-          path: dados/
+          path: pipeline_cloud/dados/
           if-no-files-found: warn
           retention-days: 7
