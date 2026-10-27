@@ -1,0 +1,246 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+
+  <title>South America Economic Data Platform</title>
+
+  <link rel="stylesheet"
+        href="/static/style.css">
+
+  <script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
+</head>
+
+<body>
+
+  <main class="container">
+
+    <header>
+      <h1>South America Economic Data Platform</h1>
+      <p>Dashboard de indicadores econômicos</p>
+    </header>
+
+    <section class="filtros">
+      <label>
+        País
+        <select id="pais"></select>
+      </label>
+
+      <label>
+        Ano inicial
+        <select id="inicio"></select>
+      </label>
+
+      <label>
+        Ano final
+        <select id="fim"></select>
+      </label>
+    </section>
+
+    <section class="indicadores">
+      <article>
+        <h2>PIB mais recente</h2>
+        <strong id="pib">—</strong>
+      </article>
+
+      <article>
+        <h2>Variação nominal anual</h2>
+        <strong id="variacao">—</strong>
+      </article>
+
+      <article>
+        <h2>Ano de referência</h2>
+        <strong id="ano">—</strong>
+      </article>
+    </section>
+
+    <section class="grafico">
+      <h2>Evolução do PIB</h2>
+      <div id="grafico"></div>
+    </section>
+
+    <p id="mensagem" role="status"></p>
+
+    <footer>
+      Fonte: Banco Mundial.
+      PIB em dólares correntes.
+      A variação nominal não representa
+      necessariamente crescimento real.
+    </footer>
+
+  </main>
+
+<script>
+let dados = [];
+
+const pais = document.getElementById("pais");
+const inicio = document.getElementById("inicio");
+const fim = document.getElementById("fim");
+const mensagem = document.getElementById("mensagem");
+
+function preencherSelect(elemento, valores) {
+  elemento.replaceChildren();
+
+  valores.forEach(valor => {
+    const opcao = document.createElement("option");
+    opcao.value = String(valor);
+    opcao.textContent = String(valor);
+    elemento.appendChild(opcao);
+  });
+}
+
+function atualizar() {
+  const paisSelecionado = pais.value;
+  const anoInicial = Number(inicio.value);
+  const anoFinal = Number(fim.value);
+
+  if (anoInicial > anoFinal) {
+    mensagem.textContent =
+      "O ano inicial não pode superar o ano final.";
+    return;
+  }
+
+  const serie = dados
+    .filter(item => item.nome_pais === paisSelecionado)
+    .sort((a, b) => a.ano - b.ano);
+
+  const filtrados = serie.filter(
+    item => item.ano >= anoInicial &&
+            item.ano <= anoFinal
+  );
+
+  if (!filtrados.length) {
+    mensagem.textContent =
+      "Não existem registros para este período.";
+    return;
+  }
+
+  mensagem.textContent = "";
+
+  const ultimo = filtrados[filtrados.length - 1];
+
+  const anterior = serie.find(
+    item => item.ano === ultimo.ano - 1
+  );
+
+  let variacao = "N/D";
+
+  if (anterior && anterior.pib_usd > 0) {
+    const percentual = (
+      ultimo.pib_usd / anterior.pib_usd - 1
+    ) * 100;
+
+    variacao = percentual.toFixed(2) + "%";
+  }
+
+  document.getElementById("pib").textContent =
+    "US$ " + ultimo.pib_bilhoes_usd.toLocaleString(
+      "pt-BR",
+      {maximumFractionDigits: 2}
+    ) + " bi";
+
+  document.getElementById("variacao").textContent =
+    variacao;
+
+  document.getElementById("ano").textContent =
+    ultimo.ano;
+
+  Plotly.react(
+    "grafico",
+    [{
+      x: filtrados.map(item => item.ano),
+      y: filtrados.map(
+        item => item.pib_bilhoes_usd
+      ),
+      type: "scatter",
+      mode: "lines+markers",
+      line: {
+        color: "#16a34a",
+        width: 3
+      },
+      marker: {
+        size: 9
+      },
+      name: "PIB"
+    }],
+    {
+      paper_bgcolor: "#171c22",
+      plot_bgcolor: "#171c22",
+      font: {color: "#ffffff"},
+      xaxis: {
+        title: "Ano",
+        tickmode: "array",
+        tickvals: filtrados.map(item => item.ano)
+      },
+      yaxis: {
+        title: "PIB (US$ bilhões)"
+      },
+      margin: {
+        t: 30,
+        r: 25,
+        b: 65,
+        l: 75
+      }
+    },
+    {responsive: true}
+  );
+}
+
+async function iniciar() {
+  try {
+    const resposta = await fetch("/api/indicadores");
+
+    if (!resposta.ok) {
+      throw new Error(
+        "Falha HTTP " + resposta.status
+      );
+    }
+
+    dados = await resposta.json();
+
+    if (!dados.length) {
+      mensagem.textContent =
+        "Nenhum indicador disponível.";
+      return;
+    }
+
+    const paises = [
+      ...new Set(
+        dados.map(item => item.nome_pais)
+      )
+    ].sort();
+
+    const anos = [
+      ...new Set(
+        dados.map(item => item.ano)
+      )
+    ].sort((a, b) => a - b);
+
+    preencherSelect(pais, paises);
+    preencherSelect(inicio, anos);
+    preencherSelect(fim, anos);
+
+    inicio.value = String(anos[0]);
+    fim.value = String(anos[anos.length - 1]);
+
+    atualizar();
+
+  } catch (erro) {
+    mensagem.textContent =
+      "Não foi possível carregar os indicadores.";
+    console.error(erro);
+  }
+}
+
+pais.addEventListener("change", atualizar);
+inicio.addEventListener("change", atualizar);
+fim.addEventListener("change", atualizar);
+
+iniciar();
+</script>
+
+</body>
+</html>
