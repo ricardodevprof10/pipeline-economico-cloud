@@ -1,0 +1,46 @@
+
+name: Qualidade dos dados economicos
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "30 9 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  validar-qualidade:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install "psycopg[binary]>=3.2,<4.0" "pytest>=8,<10"
+
+      - name: Executar testes
+        run: |
+          python -m pytest qualidade/test_validacao.py -v
+
+      - name: Validar dados reais
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python qualidade/validar_dados.py
+
+      - name: Salvar relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-qualidade
+          path: qualidade/resultados/
+          if-no-files-found: warn
