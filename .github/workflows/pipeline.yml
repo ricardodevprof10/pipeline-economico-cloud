@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: pipeline-economico-producao
+  cancel-in-progress: false
+
 jobs:
   executar-pipeline:
     runs-on: ubuntu-latest
@@ -20,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -29,26 +33,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r pipeline_cloud/requirements.txt
 
-
       - name: Executar testes
         working-directory: pipeline_cloud
         run: |
           python -m pytest tests/ -v
 
-      - name: Executar pipeline
-        working-directory: pipeline_cloud
-        run: |
-          python -m src.pipeline
-
-
-      - name: Persistir dados no PostgreSQL
-        working-directory: pipeline_cloud
+      - name: Executar pipeline com auditoria
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          python -m src.persistir_postgres
-
-
+          python pipeline_cloud/src/auditar_execucao.py
 
       - name: Salvar resultados
         if: always()
