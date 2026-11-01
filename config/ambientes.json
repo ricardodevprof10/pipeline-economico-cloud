@@ -1,0 +1,21 @@
+
+{
+  "development": {
+    "descricao": "Ambiente de desenvolvimento",
+    "permite_carga_producao": false,
+    "dados": "ficticios",
+    "auditoria": true
+  },
+  "staging": {
+    "descricao": "Ambiente de homologacao",
+    "permite_carga_producao": false,
+    "dados": "controlados",
+    "auditoria": true
+  },
+  "production": {
+    "descricao": "Ambiente de producao",
+    "permite_carga_producao": true,
+    "dados": "oficiais",
+    "auditoria": true
+  }
+}
