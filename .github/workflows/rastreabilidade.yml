@@ -1,0 +1,37 @@
+
+name: Rastreabilidade dos dados economicos
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 11 * * 3"
+
+permissions:
+  contents: read
+
+jobs:
+  registrar-proveniencia:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Registrar proveniencia
+        run: |
+          python rastreabilidade/registrar_proveniencia.py
+
+      - name: Salvar relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-rastreabilidade
+          path: rastreabilidade/resultados/
+          if-no-files-found: warn
+          retention-days: 30
