@@ -1,0 +1,52 @@
+
+name: Testar Dead Letter Queue
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teste-dlq-staging
+  cancel-in-progress: false
+
+jobs:
+  testar-dlq:
+    name: Validar tratamento de eventos
+    runs-on: ubuntu-latest
+
+    environment: staging
+
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "psycopg[binary]>=3.2,<4.0"
+
+      - name: Executar laboratorio DLQ
+        env:
+          AMBIENTE: staging
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEON_STAGING_HOST: ${{ vars.NEON_STAGING_HOST }}
+        run: |
+          python dlq/processar_dlq.py
+
+      - name: Salvar relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-dlq
+          path: dlq/resultados/
+          if-no-files-found: warn
+          retention-days: 7
