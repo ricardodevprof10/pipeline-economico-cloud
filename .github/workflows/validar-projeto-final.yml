@@ -1,0 +1,49 @@
+
+name: Validar projeto final
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "projeto_final/**"
+      - ".github/workflows/validar-projeto-final.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validar-projeto:
+    name: Testes automatizados
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "pandas>=2.2,<3.0" \
+            "pyarrow>=17,<24" \
+            "psycopg[binary]>=3.2,<4.0" \
+            "pytest>=8,<10"
+
+      - name: Executar testes
+        run: |
+          python -m pytest \
+            projeto_final/test_pipeline.py \
+            -v
+
+      - name: Verificar sintaxe Python
+        run: |
+          python -m compileall -q \
+            projeto_final/
