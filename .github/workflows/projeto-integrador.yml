@@ -1,0 +1,56 @@
+
+name: Projeto integrador Engenharia de Dados
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: projeto-integrador-staging
+  cancel-in-progress: false
+
+jobs:
+  executar-projeto:
+    name: Executar pipeline integrador
+    runs-on: ubuntu-latest
+
+    environment: staging
+
+    timeout-minutes: 15
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "pandas>=2.2,<3.0" \
+            "pyarrow>=17,<24" \
+            "psycopg[binary]>=3.2,<4.0"
+
+      - name: Executar pipeline integrador
+        env:
+          AMBIENTE: staging
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEON_STAGING_HOST: ${{ vars.NEON_STAGING_HOST }}
+        run: |
+          python projeto_final/pipeline_integrador.py
+
+      - name: Publicar arquivos e relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: projeto-integrador-resultados
+          path: |
+            projeto_final/dados/
+            projeto_final/resultados/
+          if-no-files-found: warn
+          retention-days: 7
