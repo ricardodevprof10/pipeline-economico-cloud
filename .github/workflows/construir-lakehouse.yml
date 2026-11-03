@@ -1,0 +1,49 @@
+
+name: Construir mini Data Lake
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: laboratorio-lakehouse
+  cancel-in-progress: false
+
+jobs:
+  construir-lakehouse:
+    name: Gerar camadas Bronze Silver Gold
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "pandas>=2.2,<3.0" \
+            "pyarrow>=17,<24"
+
+      - name: Executar laboratorio
+        run: |
+          python lakehouse/construir_camadas.py
+
+      - name: Salvar arquivos e relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mini-data-lake
+          path: |
+            lakehouse/dados/
+            lakehouse/resultados/
+          if-no-files-found: warn
+          retention-days: 7
