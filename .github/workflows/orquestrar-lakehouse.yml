@@ -1,0 +1,178 @@
+
+name: Orquestrar pipeline Lakehouse
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orquestracao-lakehouse
+  cancel-in-progress: false
+
+jobs:
+  bronze:
+    name: Etapa Bronze
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "pandas>=2.2,<3.0" \
+            "pyarrow>=17,<24"
+
+      - name: Gerar Bronze
+        run: |
+          python orquestracao/executar_etapa.py \
+            --etapa bronze
+
+      - name: Publicar Bronze
+        uses: actions/upload-artifact@v4
+        with:
+          name: dados-bronze
+          path: orquestracao/dados/bronze/
+          if-no-files-found: error
+          retention-days: 7
+
+  silver:
+    name: Etapa Silver
+    needs: bronze
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "pandas>=2.2,<3.0" \
+            "pyarrow>=17,<24"
+
+      - name: Receber Bronze
+        uses: actions/download-artifact@v4
+        with:
+          name: dados-bronze
+          path: orquestracao/dados/bronze/
+
+      - name: Gerar Silver
+        run: |
+          python orquestracao/executar_etapa.py \
+            --etapa silver
+
+      - name: Publicar Silver
+        uses: actions/upload-artifact@v4
+        with:
+          name: dados-silver
+          path: orquestracao/dados/silver/
+          if-no-files-found: error
+          retention-days: 7
+
+  gold:
+    name: Etapa Gold
+    needs: silver
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "pandas>=2.2,<3.0" \
+            "pyarrow>=17,<24"
+
+      - name: Receber Silver
+        uses: actions/download-artifact@v4
+        with:
+          name: dados-silver
+          path: orquestracao/dados/silver/
+
+      - name: Gerar Gold
+        run: |
+          python orquestracao/executar_etapa.py \
+            --etapa gold
+
+      - name: Publicar Gold
+        uses: actions/upload-artifact@v4
+        with:
+          name: dados-gold
+          path: orquestracao/dados/gold/
+          if-no-files-found: error
+          retention-days: 7
+
+  validar:
+    name: Validar pipeline completo
+    needs: gold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install \
+            "pandas>=2.2,<3.0" \
+            "pyarrow>=17,<24"
+
+      - name: Receber Bronze
+        uses: actions/download-artifact@v4
+        with:
+          name: dados-bronze
+          path: orquestracao/dados/bronze/
+
+      - name: Receber Silver
+        uses: actions/download-artifact@v4
+        with:
+          name: dados-silver
+          path: orquestracao/dados/silver/
+
+      - name: Receber Gold
+        uses: actions/download-artifact@v4
+        with:
+          name: dados-gold
+          path: orquestracao/dados/gold/
+
+      - name: Validar resultados
+        run: |
+          python orquestracao/executar_etapa.py \
+            --etapa validacao
+
+      - name: Publicar relatorio final
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-orquestracao
+          path: orquestracao/resultados/
+          if-no-files-found: error
+          retention-days: 7
