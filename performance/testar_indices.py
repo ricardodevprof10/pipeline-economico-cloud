@@ -90,15 +90,15 @@ def preparar_dados(conexao):
                 SELECT
                     numero,
                     CASE
-                        WHEN numero % 10 = 0
+                        WHEN MOD(numero, 10) = 0
                             THEN 'BRA'
-                        WHEN numero % 10 = 1
+                        WHEN MOD(numero, 10) = 1
                             THEN 'ARG'
-                        WHEN numero % 10 = 2
+                        WHEN MOD(numero, 10) = 2
                             THEN 'CHL'
                         ELSE 'OUT'
                     END,
-                    2000 + (numero % 25),
+                    2000 + MOD(numero, 25),
                     1000 + numero
                 FROM generate_series(
                     1, %s
@@ -177,12 +177,15 @@ def tipos_de_nos(plano):
     tipos = []
 
     def visitar(no):
-        tipos.append(no.get("Node Type"))
+        tipos.append(
+            no.get("Node Type")
+        )
 
         for filho in no.get("Plans", []):
             visitar(filho)
 
     visitar(plano["Plan"])
+
     return tipos
 
 
@@ -224,7 +227,9 @@ def executar():
 
     ganho_percentual = (
         round(
-            (1 - tempo_depois / tempo_antes) * 100,
+            (
+                1 - tempo_depois / tempo_antes
+            ) * 100,
             2,
         )
         if tempo_antes > 0
